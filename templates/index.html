@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explainable AI Chatbot</title>
+<style>
+    :root {
+        --panel: rgba(7, 16, 32, 0.72);
+        --panel-strong: rgba(10, 22, 42, 0.84);
+        --border: rgba(122, 216, 255, 0.18);
+        --border-strong: rgba(122, 216, 255, 0.34);
+        --text-main: #f4fbff;
+        --text-soft: rgba(220, 241, 255, 0.74);
+        --text-faint: rgba(193, 226, 245, 0.48);
+        --accent: #49d7ff;
+        --accent-strong: #1f8bff;
+        --user-bubble: linear-gradient(135deg, rgba(46, 214, 255, 0.94), rgba(24, 124, 255, 0.92));
+        --bot-bubble: rgba(9, 23, 47, 0.84);
+        --shadow-xl: 0 24px 54px rgba(0, 0, 0, 0.38);
+        --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.3);
+        --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.18);
+        --radius-xl: 22px;
+        --radius-lg: 16px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html {
+        height: 100%;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 36px 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 18px;
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        color: var(--text-main);
+        background:
+            linear-gradient(90deg, rgba(1, 7, 18, 0.88) 0%, rgba(3, 11, 24, 0.78) 36%, rgba(3, 11, 24, 0.52) 58%, rgba(3, 11, 24, 0.38) 100%),
+            url("/static/ai-bg.jpg") center center / cover no-repeat fixed;
+        position: relative;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+            radial-gradient(circle at 18% 18%, rgba(73, 215, 255, 0.22), transparent 20%),
+            radial-gradient(circle at 20% 78%, rgba(31, 139, 255, 0.18), transparent 22%),
+            linear-gradient(180deg, rgba(0, 8, 18, 0.16), rgba(0, 8, 18, 0.42));
+        backdrop-filter: blur(6px);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    body::after {
+        content: "";
+        position: fixed;
+        inset: auto auto -120px -120px;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(73, 215, 255, 0.3), rgba(73, 215, 255, 0));
+        filter: blur(26px);
+        opacity: 0.9;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .chat-shell {
+        width: min(640px, calc(100vw - 56px));
+        margin-left: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .chat-header,
+    .chat-input,
+    #chatbox {
+        width: 100%;
+        position: relative;
+        z-index: 1;
+    }
+
+    .chat-header {
+        padding: 24px 28px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        background:
+            linear-gradient(135deg, rgba(10, 25, 48, 0.9), rgba(5, 18, 35, 0.72)),
+            linear-gradient(90deg, rgba(73, 215, 255, 0.12), rgba(255, 255, 255, 0));
+        box-shadow:
+            var(--shadow-lg),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        font-size: clamp(1.25rem, 2vw, 1.8rem);
+        font-weight: 800;
+        letter-spacing: 0.01em;
+        text-align: left;
+        backdrop-filter: blur(18px);
+        overflow: hidden;
+    }
+
+    .chat-header::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgba(73, 215, 255, 0.14), transparent 42%);
+        pointer-events: none;
+    }
+
+    .chat-header::after {
+        content: "";
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        bottom: 0;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(73, 215, 255, 0.92), rgba(31, 139, 255, 0.45), rgba(31, 139, 255, 0));
+        border-radius: 999px;
+    }
+
+    #chatbox {
+        min-height: 520px;
+        max-height: 62vh;
+        padding: 26px;
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(8, 20, 39, 0.84), rgba(5, 15, 30, 0.7));
+        box-shadow: var(--shadow-xl);
+        backdrop-filter: blur(20px);
+        overflow-wrap: break-word;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(73, 215, 255, 0.72) rgba(5, 15, 30, 0.4);
+    }
+
+    #chatbox::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    #chatbox::-webkit-scrollbar-track {
+        background: rgba(5, 15, 30, 0.32);
+        border-radius: 999px;
+    }
+
+    #chatbox::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, rgba(73, 215, 255, 0.86), rgba(31, 139, 255, 0.74));
+        border-radius: 999px;
+    }
+
+    #chatbox::after {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border-radius: calc(var(--radius-xl) - 6px);
+        border: 1px solid rgba(122, 216, 255, 0.08);
+        pointer-events: none;
+    }
+
+    #chatbox:empty::before {
+        content: "Ask a question and start your conversation with XplainAI.";
+        display: block;
+        color: var(--text-soft);
+        font-size: 1rem;
+        font-weight: 500;
+        text-align: center;
+        padding-top: 170px;
+        position: relative;
+        z-index: 1;
+    }
+
+    #chatbox p {
+        margin: 0 0 16px;
+        max-width: min(92%, 560px);
+        padding: 16px 18px;
+        border-radius: 16px;
+        line-height: 1.65;
+        font-size: 0.99rem;
+        position: relative;
+        z-index: 1;
+        box-shadow: var(--shadow-sm);
+        animation: message-rise 0.28s ease both;
+        white-space: pre-wrap;
+    }
+
+    #chatbox p:last-child {
+        margin-bottom: 0;
+    }
+
+    #chatbox p:nth-child(odd) {
+        margin-left: auto;
+        background: var(--user-bubble);
+        color: #f4fbff;
+        border-bottom-right-radius: 6px;
+    }
+
+    #chatbox p:nth-child(even) {
+        margin-right: auto;
+        background: var(--bot-bubble);
+        color: #edf8ff;
+        border: 1px solid rgba(122, 216, 255, 0.12);
+        border-bottom-left-radius: 6px;
+    }
+
+    #chatbox b {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(229, 247, 255, 0.76);
+    }
+
+    .chat-input {
+        display: flex;
+        gap: 16px;
+        padding: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl);
+        backdrop-filter: blur(20px);
+    }
+
+    .chat-input input {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid rgba(122, 216, 255, 0.12);
+        border-radius: var(--radius-lg);
+        padding: 18px 22px;
+        font-size: 1.05rem;
+        color: var(--text-main);
+        background: rgba(4, 13, 28, 0.72);
+        outline: none;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .chat-input input::placeholder {
+        color: var(--text-faint);
+    }
+
+    .chat-input input:focus {
+        border-color: var(--border-strong);
+        box-shadow: 0 0 0 4px rgba(73, 215, 255, 0.12);
+        background: rgba(6, 17, 35, 0.9);
+    }
+
+    .chat-input button {
+        border: none;
+        border-radius: var(--radius-lg);
+        padding: 18px 30px;
+        min-width: 146px;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        color: #effcff;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        box-shadow: 0 14px 30px rgba(18, 113, 255, 0.32);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .chat-input button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 34px rgba(18, 113, 255, 0.38);
+        filter: brightness(1.06);
+    }
+
+    .chat-input button:active {
+        transform: translateY(0);
+        box-shadow: 0 10px 18px rgba(18, 113, 255, 0.24);
+    }
+
+    @keyframes message-rise {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 720px) {
+        body {
+            padding: 20px 14px;
+        }
+
+        .chat-shell {
+            width: calc(100vw - 28px);
+            margin-left: 0;
+        }
+
+        .chat-header {
+            padding: 18px;
+            font-size: 1.08rem;
+        }
+
+        .chat-input {
+            flex-direction: column;
+            padding: 16px;
+        }
+
+        .chat-input button {
+            width: 100%;
+            min-width: 0;
+        }
+
+        #chatbox {
+            min-height: 400px;
+            max-height: none;
+            padding: 20px 16px;
+        }
+
+        #chatbox:empty::before {
+            padding-top: 110px;
+        }
+
+        #chatbox p {
+            max-width: 100%;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="chat-shell">
+        <div class="chat-header">XplainAI - Explainable AI Assistant</div>
+        <div id="chatbox"></div>
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Ask about AI..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+<script>
+const chatbox = document.getElementById("chatbox");
+const inputField = document.getElementById("userInput");
+
+inputField.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+    }
+});
+
+async function sendMessage() {
+    const userInput = inputField.value.trim();
+
+    if (!userInput) {
+        return;
+    }
+
+    const response = await fetch("/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: userInput })
+    });
+
+    const data = await response.json();
+
+    chatbox.innerHTML +=
+        "<p><b>You:</b> " + escapeHtml(userInput) + "</p>" +
+        "<p><b>XplainAI:</b> " + escapeHtml(data.response) + "</p>";
+
+    inputField.value = "";
+    chatbox.scrollTop = chatbox.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+</body>
+</html>
